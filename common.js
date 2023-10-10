@@ -270,7 +270,7 @@ const _0x53fee8 = async (_0x3bc174, _0x2719db, _0x5af601 = 5) => {
 const _0x2c412b = async (_0x2b0217, _0x476507, _0x30fa7a, _0x3a8264 = 5) => {
 };
 const _0x171be3 = async (_0x3fe456, _0x5e4065, _0x5b7be9 = 5) => {
-  console["log"]("\n卡密详情:\n距离到期还剩:30天\n当前拥有的车位数为:10\n");
+  console["log"]("\n卡密详情:\n距离到期还剩: 30天\n当前拥有的车位数为: 10\n");
 };
 async function _0x5bcbae(_0x23aeb9) {
   return new Promise(_0x3b6a77 => {
