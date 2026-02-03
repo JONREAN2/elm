@@ -8,7 +8,7 @@ on:
       - 'README.md'
       - 'imgs/'
   schedule:
-    - cron: '0 4,10 * * *'
+    - cron: '0 4,10 * * *'  # 每天 04:00 和 10:00 UTC
   watch:
     types: started
 
@@ -21,33 +21,37 @@ jobs:
         python-version: [3.8]
 
     steps:
+    # 1️⃣ Checkout 仓库
     - uses: actions/checkout@v4
 
+    # 2️⃣ Setup Python
     - name: set up python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
-    # 安装 python 库
+    # 3️⃣ 安装依赖
     - name: install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests
-        pip install pypushdeer
+        pip install requests pypushdeer
 
-    # 执行 签到脚本
+    # 4️⃣ 执行签到脚本
     - name: running checkin
       run: |
-        python checkin.py
+        python glados_notify.py
       env:
-        # env获取
         PUSHDEER_SENDKEY: ${{ secrets.PUSHDEER_SENDKEY }}
         GLADOS_COOKIES: ${{ secrets.GLADOS_COOKIES }}
         GLADOS_EXCHANGE_PLAN: ${{ secrets.GLADOS_EXCHANGE_PLAN }}
+        TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
 
+    # 5️⃣ 保持 workflow 活跃
     - name: keep alive
-      uses: liskin/gh-workflow-keepalive@v1 # using the workflow with default settings
-      
+      uses: liskin/gh-workflow-keepalive@v1
+
+    # 6️⃣ 删除旧 workflow
     - name: delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
@@ -56,4 +60,3 @@ jobs:
         retain_days: 7
         keep_minimum_runs: 10
         delete_run_by_conclusion_pattern: success
- 
