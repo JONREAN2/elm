@@ -46,6 +46,7 @@ jobs:
         GLADOS_EXCHANGE_PLAN: ${{ secrets.GLADOS_EXCHANGE_PLAN }}
         TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
         TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        GLADOS_EMAILS: ${{ secrets.GLADOS_EMAILS }}
 
     # 5️⃣ 保持 workflow 活跃
     - name: keep alive
