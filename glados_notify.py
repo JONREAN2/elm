@@ -90,7 +90,7 @@ def make_request(url: str, method: str, headers: Dict[str, str], data: Optional[
         return None
 
 # ---------------------- 签到 & 兑换 ----------------------
-def checkin_and_process(cookie: str, exchange_plan: str) -> Tuple[str, str, str, str, str]:
+def checkin_and_process(cookie: str, exchange_plan: str, do_exchange: bool = True) -> Tuple[str, str, str, str, str]:
     status_msg = "签到请求失败"
     points_gained = "0"
     remaining_days = "获取剩余天数失败"
@@ -136,18 +136,21 @@ def checkin_and_process(cookie: str, exchange_plan: str) -> Tuple[str, str, str,
     except:
         remaining_points = "获取失败"
 
-    # 自动兑换
-    required_points = EXCHANGE_POINTS.get(exchange_plan, 500)
-    if current_points_numeric >= required_points:
-        exchange_response = make_request(EXCHANGE_URL, 'POST', HEADERS_TEMPLATE, {"planType": exchange_plan}, cookies=cookie)
-        try:
-            exchange_data = exchange_response.json() if exchange_response else {}
-            code = exchange_data.get('code', -1)
-            exchange_msg = f"兑换成功：{exchange_plan}" if code==0 else f"兑换失败：{exchange_plan} 代码:{code}"
-        except:
-            exchange_msg = f"兑换响应解析失败：{exchange_plan}"
+    # ----------------- 兑换逻辑 -----------------
+    if do_exchange:
+        required_points = EXCHANGE_POINTS.get(exchange_plan, 500)
+        if current_points_numeric >= required_points:
+            exchange_response = make_request(EXCHANGE_URL, 'POST', HEADERS_TEMPLATE, {"planType": exchange_plan}, cookies=cookie)
+            try:
+                exchange_data = exchange_response.json() if exchange_response else {}
+                code = exchange_data.get('code', -1)
+                exchange_msg = f"兑换成功：{exchange_plan}" if code==0 else f"兑换失败：{exchange_plan} 代码:{code}"
+            except:
+                exchange_msg = f"兑换响应解析失败：{exchange_plan}"
+        else:
+            exchange_msg = f"积分不足，未兑换：{exchange_plan}"
     else:
-        exchange_msg = f"积分不足，未兑换：{exchange_plan}"
+        exchange_msg = f"未执行兑换"
 
     return status_msg, points_gained, remaining_days, remaining_points, exchange_msg
 
@@ -191,7 +194,11 @@ def main():
     for idx, cookie in enumerate(cookies_list,1):
         email = emails_list[idx-1] if idx-1 < len(emails_list) else f"账号{idx}"
         logger.info(f"处理账号 {idx} ({email}) ...")
-        status, points, days, points_total, exchange = checkin_and_process(cookie, exchange_plan)
+        
+        # 只有第一个账号执行兑换
+        do_exchange = True if idx == 1 else False
+        
+        status, points, days, points_total, exchange = checkin_and_process(cookie, exchange_plan, do_exchange)
         results.append({
             'email': email,
             'status': status,
