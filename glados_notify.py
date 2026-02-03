@@ -160,7 +160,8 @@ def format_push_content(results: List[Dict[str,str]]) -> Tuple[str,str]:
     title = f'GLaDOS 签到, 成功{success_count}, 失败{fail_count}, 重复{repeat_count}'
     content_lines = []
     for i, r in enumerate(results,1):
-        email_part = f"📧 {r.get('email','账号'+str(i))}"
+        email_part = r.get('email') if r.get('email') else f"账号{i}"
+        email_part = f"📧 {email_part}"
         line = f"{email_part} | P:{r['points']} 剩余天数:{r['days']} 总积分:{r['points_total']} | {r['status']}; {r['exchange']}"
         content_lines.append(line)
     return title, "\n".join(content_lines)
