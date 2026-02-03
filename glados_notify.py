@@ -27,6 +27,7 @@ ENV_COOKIES = "GLADOS_COOKIES"
 ENV_EXCHANGE_PLAN = "GLADOS_EXCHANGE_PLAN"
 ENV_TG_BOT_TOKEN = "TG_BOT_TOKEN"
 ENV_TG_CHAT_ID = "TG_CHAT_ID"
+ENV_EMAILS = "GLADOS_EMAILS"  # 多账号 EMAIL
 
 # ---------------------- API 配置 ----------------------
 CHECKIN_URL = "https://glados.cloud/api/user/checkin"
@@ -46,21 +47,26 @@ HEADERS_TEMPLATE = {
 EXCHANGE_POINTS = {"plan100": 100, "plan200": 200, "plan500": 500} 
 
 # ---------------------- 配置加载 ----------------------
-def load_config() -> Tuple[str, List[str], str, str, str]:
+def load_config() -> Tuple[str, List[str], str, str, str, List[str]]:
     push_key = os.environ.get(ENV_PUSH_KEY, "")
     cookies_env = os.environ.get(ENV_COOKIES, "")
     exchange_plan = os.environ.get(ENV_EXCHANGE_PLAN, "plan500")
     tg_token = os.environ.get(ENV_TG_BOT_TOKEN, "")
     tg_chat_id = os.environ.get(ENV_TG_CHAT_ID, "")
+    emails_env = os.environ.get(ENV_EMAILS, "")
 
     cookies_list = [c.strip() for c in cookies_env.split('&') if c.strip()]
+    emails_list = [e.strip() for e in emails_env.split('&') if e.strip()]
+
+    if emails_list and len(emails_list) != len(cookies_list):
+        logger.warning("EMAIL 数量与 Cookie 数量不一致，可能导致显示错误")
 
     if exchange_plan not in EXCHANGE_POINTS:
         logger.warning(f"兑换计划 {exchange_plan} 无效，使用默认 plan500")
         exchange_plan = "plan500"
 
-    logger.info(f"共加载 {len(cookies_list)} 个 Cookie。")
-    return push_key, cookies_list, exchange_plan, tg_token, tg_chat_id
+    logger.info(f"共加载 {len(cookies_list)} 个 Cookie 和 {len(emails_list)} 个 EMAIL。")
+    return push_key, cookies_list, exchange_plan, tg_token, tg_chat_id, emails_list
 
 # ---------------------- HTTP 请求 ----------------------
 def make_request(url: str, method: str, headers: Dict[str, str], data: Optional[Dict] = None, cookies: str = "") -> Optional[requests.Response]:
@@ -91,6 +97,7 @@ def checkin_and_process(cookie: str, exchange_plan: str) -> Tuple[str, str, str,
     remaining_points = "获取剩余积分失败"
     exchange_msg = "兑换跳过或失败"
 
+    # 签到
     checkin_response = make_request(CHECKIN_URL, 'POST', HEADERS_TEMPLATE, CHECKIN_DATA, cookies=cookie)
     if not checkin_response:
         return status_msg, points_gained, remaining_days, remaining_points, exchange_msg
@@ -153,7 +160,8 @@ def format_push_content(results: List[Dict[str,str]]) -> Tuple[str,str]:
     title = f'GLaDOS 签到, 成功{success_count}, 失败{fail_count}, 重复{repeat_count}'
     content_lines = []
     for i, r in enumerate(results,1):
-        line = f"账号{i}: P:{r['points']} 剩余天数:{r['days']} 总积分:{r['points_total']} | {r['status']}; {r['exchange']}"
+        email_part = f"📧 {r.get('email','账号'+str(i))}"
+        line = f"{email_part} | P:{r['points']} 剩余天数:{r['days']} 总积分:{r['points_total']} | {r['status']}; {r['exchange']}"
         content_lines.append(line)
     return title, "\n".join(content_lines)
 
@@ -176,13 +184,15 @@ def send_telegram(title:str, content:str, bot_token:str, chat_id:str):
 
 # ---------------------- 主函数 ----------------------
 def main():
-    push_key, cookies_list, exchange_plan, tg_token, tg_chat_id = load_config()
+    push_key, cookies_list, exchange_plan, tg_token, tg_chat_id, emails_list = load_config()
     results = []
 
     for idx, cookie in enumerate(cookies_list,1):
-        logger.info(f"处理账号 {idx}...")
+        email = emails_list[idx-1] if idx-1 < len(emails_list) else f"账号{idx}"
+        logger.info(f"处理账号 {idx} ({email}) ...")
         status, points, days, points_total, exchange = checkin_and_process(cookie, exchange_plan)
         results.append({
+            'email': email,
             'status': status,
             'points': points,
             'days': days,
